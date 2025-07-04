@@ -1,0 +1,69 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+
+# Poetry virtual environment
+.poetry/
+
+# Virtual environment
+.env/
+.venv/
+venv/
+ENV/
+*.yaml
+!*.example.yaml
+
+# Poetry lock file (có thể giữ lại nếu cần đảm bảo môi trường)
+poetry.lock
+
+# Package distributions
+dist/
+build/
+*.egg-info/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# VS Code settings
+.vscode/
+
+# MacOS files
+.DS_Store
+
+# Logs and databases
+*.log
+*.sqlite3
+
+# Pytest cache
+.pytest_cache/
+
+# MyPy cache
+.mypy_cache/
+
+# Coverage reports
+htmlcov/
+coverage.xml
+*.cover
+*.py,cover
+
+# Docker
+docker-compose.override.yml
+
+# Temporary files
+*.tmp
+*.swp
+*.csv
+!tasks/**/*.csv
+!results/**/*.csv
+
+server/models/*
+resource/*
+cache/*
+sample_data/*
+notebooks/*
+tasks/*
+results/*
+logs/*
+!server/models/download.sh
