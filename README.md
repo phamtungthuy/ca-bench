@@ -22,7 +22,8 @@ CA-Bench is a comprehensive benchmark suite for evaluating the capabilities of l
 ├── templates/ # Prompt and workflow templates
 ├── utils/ # Utility modules (token counting, cost management, etc.)
 ├── Dockerfile # Docker support
-├── requirements.txt # Python dependencies
+├── pyproject.toml # Python dependencies for evaluation
+├── requirements.txt # Python dependencies for serving model
 └── README.md # This file
 ```
 
