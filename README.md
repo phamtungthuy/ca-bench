@@ -30,7 +30,7 @@ CA-Bench is a comprehensive benchmark suite for evaluating the capabilities of l
 
 ### Prerequisites
 
-- Python 3.10+
+- Version and dependencies: See the `pyproject.toml`
 - (Optional) Docker
 
 ### Installation
