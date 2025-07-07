@@ -23,7 +23,7 @@ Motivated by these limitations, we present CA-Bench: a dataset of 70 composable 
 To provide a comprehensive performance spectrum, CA-Bench defines both a lower and an upper performance bound for each task.
 
 ## Zero-Shot Baseline (Lower Bound)
-To establish a foundational performance level, we define a Zero-Shot Baseline. This approach involves prompting a general-purpose LLM (e.g., GPT-4) to solve a given task directly, without any explicit guidance on tool composition or access to the toolset. This baseline represents the unassisted reasoning capability of the LLM and serves as the lower bound for performance. Any effective agent must significantly outperform this baseline.
+To establish a foundational performance level, we define a Zero-Shot Baseline. This approach involves prompting a general-purpose LLM (e.g., GPT-4o-mini) to solve a given task directly, without any explicit guidance on tool composition or access to the toolset. This baseline represents the unassisted reasoning capability of the LLM and serves as the lower bound for performance. Any effective agent must significantly outperform this baseline.
 
 ## Human-Designed Solution (Upper Bound)
 To define the performance ceiling, we introduce a Human-Designed Upper Bound (or Oracle). For each task, we provide a manually crafted, optimal solution pipeline that represents the best possible sequence of tool invocations to achieve the desired outcome. This "oracle" solution is not meant to be a competitor but rather a performance target. It allows us to measure how close an automated agent's solution is to the theoretical maximum achievable within the provided framework, providing a clear metric for optimality.
