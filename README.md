@@ -60,24 +60,25 @@ To define the performance ceiling, we introduce a Human-Designed Upper Bound (or
    cd ca-bench
    ```
 
-2. Setup Option A: Docker (Recommended for Serving Models)
+2. Setup Serving Models:
+Setup Option A: Docker (Recommended)
 - Build and run the model serving container in the background:
    ``` sh
    docker compose up -d
    ```
 
-3. Setup Option B: Local Environment
+Setup Option B: Local Environment
 - Install dependencies for serving models (if not using Docker):
    ``` sh
    pip install -r requirements.txt
    ```
 
-4. Install dependencies for the evaluation framework:
+3. Install dependencies for the evaluation framework:
    ```sh
    pip install -e .
    ```
 
-5. Download benchmark datasets:
+4. Download benchmark datasets:
    ```
    python scripts/download_data.py --datasets tasks
    ```
