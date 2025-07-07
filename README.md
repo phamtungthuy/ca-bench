@@ -34,6 +34,7 @@ To define the performance ceiling, we introduce a Human-Designed Upper Bound (or
 ```text
 ├── configs/ # Configuration files for models and tasks
 ├── data/ # Model metadata
+│   └── model_desc.jsonl # List of ML models
 ├── provider/ # LLM provider integrations (OpenAI, etc.)
 ├── scripts/ # Main scripts for evaluation, data download, etc.
 ├── server/ # API server for model inference
@@ -46,9 +47,9 @@ To define the performance ceiling, we introduce a Human-Designed Upper Bound (or
 ```
 
 ## Prerequisites
-- ML models can be hosted in Huggingface ( if it's avaiable ) or you can host your local ML models server. Check dependencies for ML models in requiments.txt
-- (Optional) You can run your ML models server (serving model) by using Dockerfile.
-- To run evaluation of zeroshot, human-design or your own solution, check Python version and dependencies in pyproject.toml.
+- Model Hosting: ML models can be accessed from Hugging Face (if publicly available) or hosted locally via the provided model server.
+- Serving Environment: To run the local model server, see dependencies in requirements.txt. We highly recommend using Docker for this.
+- Evaluation Environment: To run the evaluation scripts, see dependencies in pyproject.toml.
 
 ## Installation
 
@@ -59,24 +60,31 @@ To define the performance ceiling, we introduce a Human-Designed Upper Bound (or
    cd ca-bench
    ```
 
-2. Install dependencies for serving model
+2. Setup Option A: Docker (Recommended for Serving Models)
+- Build and run the model serving container in the background:
+   ``` sh
+   docker compose up -d
+   ```
 
-   ```sh
+3. Setup Option B: Local Environment
+- Install dependencies for serving models (if not using Docker):
+   ``` sh
    pip install -r requirements.txt
    ```
 
-3. (Optional) Download benchmark datasets:
+4. Install dependencies for the evaluation framework:
    ```sh
+   pip install -e .
+   ```
+
+5. Download benchmark datasets:
+   ```
    python scripts/download_data.py --datasets tasks
    ```
 
-4. (Optional) Compose serving model in Docker
-   ```sh
-   docker compose 
-
 ## Running Evaluations
 
-To evaluate models on a specific range and task:
+To evaluate a solution (e.g., zero-shot, human-designed, or your own solution) on a specific task:
 
 ```sh
 python evaluate.py --range task --result_folder_name results --folder_name <task_folder>
@@ -88,14 +96,32 @@ For all available options, run:
 python evaluate.py --help
 ```
 
-(Optional) Running local serving model on Docker:
-
 ## Contributing and Extensibility
 
 We welcome contributions to CA-Bench. To extend the benchmark:
 
-- Add New Tasks: Place new task definitions in the **tasks/** directory and update the corresponding configuration files in configs/.
-- Add New Models: Register new models or providers in the provider/ directory and update the model configurations.
+### Add New ML Model:
+The agent's capabilities are defined by the set of available models. To register a new model and make it available as a tool for the agent, you need to add its metadata to the data/model_desc.jsonl file.
+
+This file uses the JSON Lines format, where each line is a separate JSON object describing one model. Each object must contain the following keys:
+- id: The model's identifier on Hugging Face (e.g., "google/vit-base-patch16-224").
+- tag: A functional category tag (e.g., "image-classification", "text-generation"). This helps in filtering and selecting appropriate tools.
+- desc: A concise, natural language description of the model's function. This description is provided to the LLM agent to help it understand what the tool does and when to use it.
+
+Example:
+To add an image classification model and a text-to-image model, you would add the following lines to data/model_desc.jsonl:
+
+{"id": "google/vit-base-patch16-224", "tag": "image-classification", "desc": "A model that classifies the main subject of an image. Input is an image, output is a text label (e.g., 'cat', 'airplane')."}
+
+Providing a clear and accurate description in the desc field is crucial for the agent's planning and reasoning performance.
+
+### Add New Tasks:
+
+Place new task definitions in the **tasks/** directory and update the corresponding configuration files in configs/.
+
+### Add New LLMs:
+
+Register new LLMs or providers in the **provider/** directory and update the LLMs configurations.
 
 Please refer to our contribution guidelines for more details.
 
