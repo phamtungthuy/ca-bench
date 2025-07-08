@@ -7,11 +7,13 @@ from enum import Enum
 
 from utils.logs import logger
 
+
 class DownloadDataType(Enum):
     TASKS = "tasks"
     HUMAN_DESIGN = "human_design"
     ZEROSHOT = "zeroshot"
     ALL = "all"
+
 
 def download_file(url: str, filename: str) -> None:
     """Download a file from Google Drive using gdown."""
@@ -36,7 +38,8 @@ def process_dataset(url: str, filename: str, extract_path: str) -> None:
 
     os.remove(filename)
     logger.info(f"Removed {filename}")
-    
+
+
 datasets_to_download: Dict[str, Dict[str, str]] = {
     "tasks": {
         "url": "https://drive.google.com/uc?export=download&id=16FSuvmtlYs3Mum04ERxsFN_qEPrumMAo",
@@ -61,14 +64,21 @@ def download(required_datasets, if_first_download: bool = True):
     if if_first_download:
         # Convert string to list if needed
         if isinstance(required_datasets, str):
-            required_datasets = [required_datasets]
-        
+            if required_datasets == "all":
+                required_datasets = ["tasks", "human_design", "zeroshot"]
+            else:
+                required_datasets = [required_datasets]
+
+        if required_datasets == "all":
+            required_datasets = ["tasks", "human_design", "zeroshot"]
+
         for dataset_name in required_datasets:
             dataset = datasets_to_download[dataset_name]
             extract_path = dataset["extract_path"]
             process_dataset(dataset["url"], dataset["filename"], extract_path)
     else:
         logger.info("Skip downloading datasets")
+
 
 @click.command()
 @click.option("--datasets", type=str, default="tasks", help="Datasets to download")
