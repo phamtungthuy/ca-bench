@@ -142,6 +142,12 @@ For all available options, run:
 python -m scripts.evaluate --help
 ```
 
+Example :
+python -m scripts.evaluate.py
+--range node
+--result_folder_name zeroshot
+--evaluation_type calculate_score
+
 ## Contributing and Extensibility
 
 We welcome contributions to CA-Bench. To extend the benchmark:
