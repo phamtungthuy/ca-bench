@@ -104,24 +104,42 @@ Setup Option B: Local Environment
 To evaluate a solution (e.g., zero-shot, human-designed, or your own solution) on a specific task:
 
 ```sh
-python -m scripts.evaluate.py
---range [task, node, chain, graph, all] (*required)
---result_folder_name <TEXT> (*required)
---folder_name <task_folder>
---evaluation_type [calculate_score, generate_and_run_workflow, run_workflow, generate_workflow, all] (*required)
+python -m scripts.evaluate.py \
+  --range [task|node|chain|graph|all] \  # (*required)
+  --result_folder_name <TEXT> \          # (*required)
+  --folder_name <task_folder> \
+  --evaluation_type [calculate_score|generate_and_run_workflow|run_workflow|generate_workflow|all]  # (*required)
 ```
 
-- The **--range** argument specifies the scope of execution or analysis. This is the required parameter and must be set to one of the following values:
+- **--range** (REQUIRED):
+  The **--range** argument specifies the scope of execution or analysis. This is the required parameter and must be set to one of the following values:
+
   - task: Operates on a single task only, require **--folder_name** parameter for name of task.
   - node: Operates on all tasks in node-level or on a single taks in node-level with **--folder_name** parameter
   - chain: Operates on all tasks in chain-level or on a single taks in chain-level with **--folder_name** parameter
   - graph: Operates on all tasks in graph-level or on a single taks in graph-level with **--folder_name** parameter
   - all: Operates on all 70 tasks or on a single taks with **--folder_name** parameter
 
+- **--result_folder_name** (REQUIRED):
+  The **--result_folder_name** argument specifies folder that contains result of human_design, zeroshot or your own solution. That folder must be in .result folder.
+
+  - Example : --result_folder_name human_design
+
+- **--folder_name** argument specifies a specific task name folder.
+
+  - Example : --folder_name cat_dog_bigger
+
+- **--evaluation_type** argument specifies how to evaluate workflows by one of the following options:
+  - calculate_score: calculate score of workflows by specific metric.
+  - generate_and_run_workflow: generate workflow and run it.
+  - run_workflow: run workflow
+  - generate_workflow: generate workflow.
+  - all: generate, run and calculate score of workflows.
+
 For all available options, run:
 
 ```sh
-python evaluate.py --help
+python -m scripts.evaluate --help
 ```
 
 ## Contributing and Extensibility
