@@ -85,7 +85,7 @@ Setup Option B: Local Environment
 3. Install dependencies for the evaluation framework:
 
    ```sh
-   pip install -e .
+   poetry install
    ```
 
 4. Download benchmark datasets:
@@ -111,8 +111,7 @@ python -m scripts.evaluate.py
 --evaluation_type [calculate_score, generate_and_run_workflow, run_workflow, generate_workflow, all] (*required)
 ```
 
-- **--range** (REQUIRED)
-  The **--range** argument specifies the scope of execution or analysis. This is the required parameter and must be set to one of the following values:
+- The **--range** argument specifies the scope of execution or analysis. This is the required parameter and must be set to one of the following values:
   - task: Operates on a single task only, require **--folder_name** parameter for name of task.
   - node: Operates on all tasks in node-level or on a single taks in node-level with **--folder_name** parameter
   - chain: Operates on all tasks in chain-level or on a single taks in chain-level with **--folder_name** parameter
