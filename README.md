@@ -104,7 +104,7 @@ Setup Option B: Local Environment
 To evaluate a solution (e.g., zero-shot, human-designed, or your own solution) on a specific task:
 
 ```sh
-python -m scripts.evaluate.py \
+python -m scripts.evaluate \
   --range [task|node|chain|graph|all] \  # (*required)
   --result_folder_name <TEXT> \          # (*required)
   --folder_name <task_folder> \
@@ -115,10 +115,10 @@ python -m scripts.evaluate.py \
   The **--range** argument specifies the scope of execution or analysis. This is the required parameter and must be set to one of the following values:
 
   - task: Operates on a single task only, require **--folder_name** parameter for name of task.
-  - node: Operates on all tasks in node-level or on a single taks in node-level with **--folder_name** parameter
-  - chain: Operates on all tasks in chain-level or on a single taks in chain-level with **--folder_name** parameter
-  - graph: Operates on all tasks in graph-level or on a single taks in graph-level with **--folder_name** parameter
-  - all: Operates on all 70 tasks or on a single taks with **--folder_name** parameter
+  - node: Operates on all tasks in node-level.
+  - chain: Operates on all tasks in chain-level.
+  - graph: Operates on all tasks in graph-level.
+  - all: Operates on all 70 tasks.
 
 - **--result_folder_name** (REQUIRED):
   The **--result_folder_name** argument specifies folder that contains result of human_design, zeroshot or your own solution. That folder must be in .result folder.
@@ -143,7 +143,7 @@ python -m scripts.evaluate --help
 ```
 
 Example :
-python -m scripts.evaluate.py
+python -m scripts.evaluate
 --range node
 --result_folder_name zeroshot
 --evaluation_type calculate_score
