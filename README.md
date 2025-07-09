@@ -186,7 +186,7 @@ If you use CA-Bench in your research, please cite:
 ```
 @misc{ca-bench,
   title = {CA-Bench: A comprehensive benchmark for Composable AI systems},
-  author = {Pham, Tung-Thuy and Luong, Duy-Quan and Duong, Minh-Quan},
+  author = {Pham, Tung-Thuy and Nguyen, Thu-Trang and Nguyen, Son and Vo, Hieu Dinh and Luong, Duy-Quan and Duong, Minh-Quan},
   year = {2025},
   url = {https://github.com/phamtungthuy/ca-bench}
 }
