@@ -63,6 +63,12 @@ class Evaluator:
             config = json.loads(f.read())
         return MetricType(config["metric"])
     
+    def load_metadata(self, task_folder: str) -> dict:
+        if not os.path.exists(os.path.join(task_folder, "metadata.json")):
+            raise FileNotFoundError(f"Metadata file not found in {task_folder}")
+        with open(os.path.join(task_folder, "metadata.json"), "r", encoding="utf-8") as f:
+            return json.loads(f.read())
+    
     def load_task_description(self, task_folder: str) -> str:
         if not os.path.exists(os.path.join(task_folder, "task_description.txt")):
             raise FileNotFoundError(f"Task description file not found in {task_folder}")
@@ -139,7 +145,6 @@ class Evaluator:
                 if generate_workflow and not os.path.exists(result_folder):
                     os.makedirs(result_folder, exist_ok=True)
                 elif not os.path.exists(result_folder) or not os.path.isdir(task_folder):
-                    print(os.path.exists(result_folder), os.path.isdir(task_folder))
                     logger.warning(f"Result folder not found for task: {folder}")
                     continue
                 print(result_folder)
@@ -188,7 +193,12 @@ class Evaluator:
         except FileNotFoundError:
             logger.warning(f"Task description file not found in {task_folder}")
             return None, None
-        code = await pipeline(task_description)
+        try:
+            metadata = self.load_metadata(task_folder)
+        except FileNotFoundError:
+            logger.warning(f"Task metadata file not found in {task_folder}")
+            return None, None
+        code = await pipeline(task_description, metadata)
         self.write_workflow(result_folder, code)
         if run_workflow:
             workflow = self.load_workflow(result_folder)
@@ -204,7 +214,10 @@ class Evaluator:
             self.save_csv(result_folder, "predictions.csv", predictions)
             return await self.process_task_score(task_folder, result_folder)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             print(f"Error processing {task_folder}: {e}")
+            self.save_csv(result_folder, "predictions.csv", pd.DataFrame({"id": [], "prediction": []}))
             return 0, pd.DataFrame()
 
     async def calculate_score(self, _range: Range, result_folder_name: str,

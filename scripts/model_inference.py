@@ -20,7 +20,7 @@ import soundfile as sf
 
 model_desc = {}
 
-with open(os.path.join(ROOT_PATH, "data", "model_desc.jsonl"), "r", encoding="utf-8") as f:
+with open(os.path.join(ROOT_PATH, "data", "huggingface_models.jsonl"), "r", encoding="utf-8") as f:
     for line in f.readlines():
         info = json.loads(line)
         model_desc[info["id"]] = {
@@ -52,9 +52,12 @@ def huggingface_model_inference(model_id: str, data: dict, task: str) -> dict:
             img_data = BytesIO()
             img_obj.save(img_data, format="PNG")
             img_data = img_data.getvalue()
-        elif isinstance(data["image"], (np.ndarray, torch.Tensor)):
+        elif isinstance(data["image"], (np.ndarray, torch.Tensor, list)):
             # If input is numpy array or torch tensor
             img_array = data["image"]
+            if isinstance(img_array, list):
+                # Convert list to NumPy array
+                img_array = np.array(img_array, dtype=np.float32)
             if isinstance(img_array, torch.Tensor):
                 img_array = img_array.cpu().numpy()  # Convert tensor to NumPy
             if img_array.shape[-1] == 1:  # Handle grayscale
@@ -158,6 +161,7 @@ def huggingface_model_inference(model_id: str, data: dict, task: str) -> dict:
 
     if task in [
         "automatic-speech-recognition",
+        "audio-classification",
     ]:
         audio = data["audio"]
         if isinstance(audio, str):
@@ -175,8 +179,12 @@ def huggingface_model_inference(model_id: str, data: dict, task: str) -> dict:
         else:
             audio_data = audio
         client.headers["Content-Type"] = "audio/mpeg"
-        response = client.automatic_speech_recognition(audio=audio_data, model=model_id)
-        result = response
+        if task == "automatic-speech-recognition":
+            response = client.automatic_speech_recognition(audio=audio_data, model=model_id)
+            result = response
+        elif task == "audio-classification":
+            response = client.audio_classification(audio=audio_data, model=model_id)
+            result = response
         return result
 
     raise ValueError(f"Unsupported task: {task}")
@@ -206,9 +214,12 @@ def local_model_inference(model_id, data, task):
             img_data = BytesIO()
             img_obj.save(img_data, format="PNG")
             img_data = img_data.getvalue()
-        elif isinstance(data["image"], (np.ndarray, torch.Tensor)):
+        elif isinstance(data["image"], (np.ndarray, torch.Tensor, list)):
             # If input is numpy array or torch tensor
             img_array = data["image"]
+            if isinstance(img_array, list):
+                # Convert list to NumPy array
+                img_array = np.array(img_array, dtype=np.float32)
             if isinstance(img_array, torch.Tensor):
                 img_array = img_array.cpu().numpy()  # Convert tensor to NumPy
             if img_array.shape[-1] == 1:  # Handle grayscale
@@ -253,15 +264,19 @@ def local_model_inference(model_id, data, task):
         raise ValueError(f"Error: {response['message']}")
 
 
-def model_inference(model_id: str, input_data: dict, hosted_on: str, task: str):
+def model_inference(model_id: str, input_data: dict, hosted_on: str = None, task: str = ""):
 
     try:
         if hosted_on == "huggingface":
-            return huggingface_model_inference(model_id, input_data, task)
+            try:
+                return huggingface_model_inference(model_id, input_data, task)
+            except Exception as e:
+                return local_model_inference(model_id, input_data, task)
         elif hosted_on == "local":
             return local_model_inference(model_id, input_data, task)
         else:
-            raise ValueError(f"Unsupported hosted_on: {hosted_on}")
+            return local_model_inference(model_id, input_data, task)
+            # raise ValueError(f"Unsupported hosted_on: {hosted_on}")
     except Exception as e:
         raise e
 

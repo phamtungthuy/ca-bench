@@ -17,6 +17,9 @@ from server.custom_pipeline.tabular_pipeline import (
     TabularRegressionPipeline,
 )
 import soundfile as sf
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 MAX_MODELS_IN_RAM = 5
 MAX_MODELS_IN_DISK = 25  # More space for disk storage
@@ -54,7 +57,7 @@ def download_model(model_id: str):
     print(f"[ success ] Downloaded model {model_id}")
 
 
-with open(f"{ROOT_PATH}/data/model_desc.jsonl", "r", encoding="utf-8") as f:
+with open(f"{ROOT_PATH}/data/huggingface_models.jsonl", "r", encoding="utf-8") as f:
     for line in f.readlines():
         info = json.loads(line)
         model_folder = f"{local_fold}/{info['id']}"
@@ -70,10 +73,10 @@ with open(f"{ROOT_PATH}/data/model_desc.jsonl", "r", encoding="utf-8") as f:
             "model": None,
             "lasted_used": None,
             "lasted_used_in_disk": lasted_used_in_disk,
-            "type": info["tag"],
+            "type": info["pipeline_tag"],
             "device": device,
             "model_path": model_folder,
-            "desc": info["desc"],
+            "desc": info["description"],
             "inference_type": "default",
             "metadata": info["metadata"] if "metadata" in info else {}
         }
@@ -101,6 +104,7 @@ def manage_disk_space():
             # Unload from RAM since we're deleting from disk
             if pipes[oldest_model_id]["model"] is not None:
                 del pipes[oldest_model_id]["model"]
+                pipes[oldest_model_id]["model"] = None
                 import torch
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
@@ -152,6 +156,7 @@ def get_pipe(model_id: str):
     manage_disk_space()
 
     pipe = pipes[model_id]
+    print("Type", pipe["type"])
     if pipe["type"] == "object-detection":
         model = YOLO(f"{local_fold}/{model_id}/yolo11l.pt")
     elif pipe["type"] == "tabular-regression":
@@ -205,6 +210,8 @@ def get_pipe(model_id: str):
             ],
             label_map={0: "0", 1: "1"},
         )
+    elif pipe["type"] == "sentence-similarity":
+        model = SentenceTransformer(pipe["model_path"], trust_remote_code=True)
     else:
         if pipe["type"] == "token-classification":
             model = pipeline(task=pipe["type"], model=pipe["model_path"], aggregation_strategy="simple")
@@ -265,8 +272,11 @@ async def inference(
     result = {}
     if "device" in pipe:
         try:
+            # Nếu là SentenceTransformer
+            if isinstance(model, SentenceTransformer):
+                model = model.to(device)
             # Nếu là pipeline HuggingFace có model torch => chuyển
-            if hasattr(model, "model") and hasattr(model.model, "to"):
+            elif hasattr(model, "model") and hasattr(model.model, "to"):
                 model.model.to(device)
             elif hasattr(model, "to"):
                 model.to(device)
@@ -298,9 +308,8 @@ async def inference(
         result["text"] = r[0].pop("translation_text")
     if model_type == "summarization":
         text = data["text"]
-        labels = data["labels"]
-        r = model(text, candidate_labels=labels)
-        result["predicted"] = r["labels"][0]
+        r = model(text)
+        result["summary_text"] = r[0].pop("summary_text")
     if model_type == "question-answering":
         context = data["context"]
         question = data["question"]
@@ -311,7 +320,18 @@ async def inference(
         r = model(data["text"])
         result["text"] = r[0].pop("generated_text")
     if model_type == "sentence-similarity":
-        pass
+        sentence = data["text"]
+        other_sentences = data["other_sentences"]
+        
+        # Encode câu chính và các câu khác
+        sentence_embedding = model.encode([sentence])
+        other_embeddings = model.encode(other_sentences)
+        
+        similarities = cosine_similarity(sentence_embedding, other_embeddings)[0]
+        
+        scores = [float(similarity) for similarity in similarities]
+        
+        result["predicted"] = scores
     if model_type == "tabular-classification":
         row = data["row"]
         r = model(row)
@@ -350,7 +370,9 @@ async def inference(
         r = model(image_data)
         result["text"] = r[0].pop("generated_text")
     if model_type == "automatic-speech-recognition":
-        raise NotImplementedError("Automatic speech recognition is not implemented")
+        audio_data = await audio.read()
+        r = model(audio_data)
+        result["text"] = r["text"]
     if model_type == "audio-classification":
         audio_data = await audio.read()
         r = model(audio_data)

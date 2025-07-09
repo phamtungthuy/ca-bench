@@ -12,7 +12,8 @@ from codebleu import calc_codebleu
 from sklearn.metrics import accuracy_score, r2_score
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from nltk.translate.bleu_score import sentence_bleu
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+from rouge_score import rouge_scorer
 
 import numpy as np
 
@@ -23,9 +24,22 @@ class MetricType(Enum):
     SEMANTIC_SIMILARITY = "semantic_similarity"
     WORD_SIMILARITY = "word_similarity"
     CODE_BLEU = "code_bleu"
-    BLEU = "bleu"
+    BLEU_1 = "bleu_1"
+    BLEU_2 = "bleu_2"
+    BLEU_3 = "bleu_3"
+    BLEU_4 = "bleu_4"
+    ROUGE = "rouge"
     F1 = "f1"
     R2 = "r2"
+    SEMANTIC_WORD_SIMILARITY = "semantic_word_similarity"
+
+
+bleu_dict = {
+    "bleu_4": (0.25, 0.25, 0.25, 0.25),
+    "bleu_3": (1 / 3, 1 / 3, 1 / 3, 0),
+    "bleu_2": (0.5, 0.5, 0, 0),
+    "bleu_1": (1.0, 0, 0, 0),
+}
 
 
 class Calculator:
@@ -42,33 +56,35 @@ class Calculator:
         """
         Get the embedding vector for a given text using the OpenAI API and a specified model.
         """
-        
-            
+
         response = self.client.embeddings.create(input=[text], model=model)
         embedding = np.array(response.data[0].embedding)
-        
+
         return embedding
 
     def get_openai_embeddings_batch(
-        self, texts: List[str], model: str = "text-embedding-3-small", batch_size: int = 100
+        self,
+        texts: List[str],
+        model: str = "text-embedding-3-small",
+        batch_size: int = 100,
     ) -> Dict[str, np.ndarray]:
         """
         Get embeddings for multiple texts in batches for better performance.
         Returns a dictionary mapping text to embedding.
         """
         results = {}
-        
+
         # Check what's already cached
         # Fetch remaining texts in batches
         for i in range(0, len(texts), batch_size):
-            batch = texts[i:i + batch_size]
+            batch = texts[i : i + batch_size]
             if batch:  # Only make API call if there are texts to fetch
                 try:
                     response = self.client.embeddings.create(input=batch, model=model)
                     for j, embedding_data in enumerate(response.data):
                         text = batch[j]
                         embedding = np.array(embedding_data.embedding)
-                        
+
                         results[text] = embedding
                 except Exception as e:
                     print(f"Error getting embeddings for batch: {e}")
@@ -79,8 +95,10 @@ class Calculator:
                         except Exception as e2:
                             print(f"Error getting embedding for '{text}': {e2}")
                             # Use zero vector as fallback
-                            results[text] = np.zeros(1536)  # text-embedding-3-small has 1536 dims
-        
+                            results[text] = np.zeros(
+                                1536
+                            )  # text-embedding-3-small has 1536 dims
+
         return results
 
     def extract_number(self, text: str) -> Optional[float]:
@@ -115,7 +133,14 @@ class Calculator:
         def replace_underscore(text: str) -> str:
             return text.replace("_", " ")
 
-        return white_space_fix(remove_articles(remove_punc(lower(replace_underscore(s)))))
+        def replace_special_chars(text: str) -> str:
+            return text.replace(";", " ").replace(":", " ")
+
+        return white_space_fix(
+            remove_articles(
+                remove_punc(lower(replace_underscore(replace_special_chars(s))))
+            )
+        )
 
     def calculate_f1_score(self, prediction: str, reference: str) -> float:
         """
@@ -144,14 +169,29 @@ class Calculator:
         score = calc_codebleu([prediction], [reference], lang="python")
         return score["codebleu"]
 
-    def calculate_bleu_score(self, prediction: str, reference: str) -> float:
+    def calculate_bleu_score(
+        self, prediction: str, reference: str, BleuType: str
+    ) -> float:
         """
         Calculate the BLEU score between a prediction and a reference string after normalization.
         """
         prediction_tokens = self.normalize_answer(prediction).split()
-        reference_tokens = self.normalize_answer(reference).split()
-        bleu = sentence_bleu(reference_tokens, prediction_tokens)
+        reference_tokens = [self.normalize_answer(reference).split()]
+        bleu = sentence_bleu(
+            reference_tokens,
+            prediction_tokens,
+            weights=bleu_dict[BleuType],
+            smoothing_function=SmoothingFunction().method1,
+        )
         return bleu
+
+    def calculate_rouge_score(self, prediction: str, reference: str) -> float:
+        """
+        Calculate the ROUGE score between a prediction and a reference string for summarization tasks.
+        """
+        scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=True)
+        scores = scorer.score(reference, prediction)
+        return scores["rougeL"].fmeasure
 
     def compute_semantic_similarity(self, prediction: str, reference: str) -> float:
         """
@@ -170,25 +210,31 @@ class Calculator:
         )
         return similarity_score[0][0]
 
-    def compute_semantic_similarity_batch(self, predictions: List[str], references: List[str]) -> List[float]:
+    def compute_semantic_similarity_batch(
+        self, predictions: List[str], references: List[str]
+    ) -> List[float]:
         """
         Compute semantic similarity for multiple prediction-reference pairs efficiently using batch processing.
         """
         # Collect all unique texts
-        all_texts = list(set(str(p) for p in predictions) | set(str(r) for r in references))
-        
+        all_texts = list(
+            set(str(p) for p in predictions) | set(str(r) for r in references)
+        )
+
         # Get embeddings for all texts in batch
-        embeddings_dict = self.get_openai_embeddings_batch(all_texts, model="text-embedding-3-small")
-        
+        embeddings_dict = self.get_openai_embeddings_batch(
+            all_texts, model="text-embedding-3-small"
+        )
+
         # Compute similarities
         similarities = []
         for pred, ref in zip(predictions, references):
-            pred_str = str(pred)
-            ref_str = str(ref)
-            
+            pred_str = str(pred) if pred else ""
+            ref_str = str(ref) 
+
             pred_embedding = embeddings_dict.get(pred_str)
             ref_embedding = embeddings_dict.get(ref_str)
-            
+
             if pred_embedding is not None and ref_embedding is not None:
                 similarity_score = cosine_similarity(
                     pred_embedding.reshape(1, -1), ref_embedding.reshape(1, -1)
@@ -197,7 +243,7 @@ class Calculator:
             else:
                 # Fallback to 0 if embedding failed
                 similarities.append(0.0)
-                
+
         return similarities
 
     def compute_word_similarity(self, prediction: str, reference: str) -> float:
@@ -215,8 +261,10 @@ class Calculator:
         prediction = str(prediction).lower().strip()
         reference = str(reference).lower().strip()
         return accuracy_score([prediction], [reference])
-    
-    def calculate_numerical_accuracy_score(self, prediction: str, reference: str) -> float:
+
+    def calculate_numerical_accuracy_score(
+        self, prediction: str, reference: str
+    ) -> float:
         """
         Calculate the numerical accuracy score for a single prediction and reference (exact match).
         """
@@ -255,10 +303,10 @@ class Calculator:
         references["id"] = references["id"].astype(str)
         predictions["id"] = predictions["id"].astype(str)
         merged = pd.merge(references, predictions, on="id", how="left")
-        
+
         # Handle prediction: keep integer, only fillna for empty values
         merged["prediction"] = merged["prediction"].fillna("")
-        
+
         def safe_convert_to_str(x):
             if pd.isna(x) or x == "":
                 return ""
@@ -270,7 +318,7 @@ class Calculator:
                     return str(x)
             except:
                 return str(x)
-        
+
         merged["prediction"] = merged["prediction"].apply(safe_convert_to_str)
         merged["label"] = merged["label"].apply(safe_convert_to_str)
         scores = []
@@ -287,12 +335,34 @@ class Calculator:
             )
             merged["score"] = scores
             average_score = sum(scores) / len(scores) if scores else 0.0
+        elif calculator_type == MetricType.SEMANTIC_WORD_SIMILARITY:
+            word_scores = []
+            for _, row in merged.iterrows():
+                word_score = self.compute_word_similarity(
+                    row["prediction"], row["label"]
+                )
+                word_scores.append(word_score)
+            semantic_scores = self.compute_semantic_similarity_batch(
+                merged["prediction"].tolist(), merged["label"].tolist()
+            )
+            scores = np.array(word_scores) * 0.8 + np.array(semantic_scores) * 0.2
+            merged["score"] = scores
+            average_score = sum(scores) / len(scores) if len(scores) > 0 else 0.0
         else:
             for _, row in merged.iterrows():
                 if calculator_type == MetricType.CODE_BLEU:
                     score = self.compute_code_bleu(row["prediction"], row["label"])
-                elif calculator_type == MetricType.BLEU:
-                    score = self.calculate_bleu_score(row["prediction"], row["label"])
+                elif calculator_type in [
+                    MetricType.BLEU_1,
+                    MetricType.BLEU_2,
+                    MetricType.BLEU_3,
+                    MetricType.BLEU_4,
+                ]:
+                    score = self.calculate_bleu_score(
+                        row["prediction"], row["label"], calculator_type.value
+                    )
+                elif calculator_type == MetricType.ROUGE:
+                    score = self.calculate_rouge_score(row["prediction"], row["label"])
                 elif calculator_type == MetricType.WORD_SIMILARITY:
                     score = self.compute_word_similarity(
                         row["prediction"], row["label"]
@@ -319,6 +389,8 @@ class Calculator:
 
 if __name__ == "__main__":
     calculator = Calculator()
-    predictions = pd.read_csv("tasks/chain-level/code_generation/predictions.csv")
-    references = pd.read_csv("tasks/chain-level/code_generation/labels.csv")
-    print(calculator("code_bleu", predictions, references))
+    # predictions = pd.read_csv("tasks/chain-level/code_generation/predictions.csv")
+    # references = pd.read_csv("tasks/chain-level/code_generation/labels.csv")
+    # print(calculator("code_bleu", predictions, references))
+    s = "uet;uet;hus"
+    print(calculator.normalize_answer(s))

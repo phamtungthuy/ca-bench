@@ -1,5 +1,4 @@
-from typing import Callable
-
+from typing import Optional
 class Pipeline:
-    async def __call__(self, task_description: str) -> str:
+    async def __call__(self, task_description: str, metadata: Optional[dict] = None) -> str:
         pass
